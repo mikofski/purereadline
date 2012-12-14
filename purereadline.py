@@ -76,7 +76,7 @@ def read_history_file(s=None):
         raise IOError(2,'No such file or directory',s)
 
 
-_history_length = -1; # do not truncate history by default
+_history_length = -1 # do not truncate history by default
 
 
 # Exported function to save a readline history file
@@ -93,6 +93,35 @@ def write_history_file(s=None):
         s = str(s)
     errno = libreadline.write_history(s)
     if not errno and _history_length >= 0:
-        libreadline.history_truncate_file(s, _history_length);
+        libreadline.history_truncate_file(s, _history_length)
     if (errno)
         raise IOError(2,'No such file or directory',s)
+
+
+# Set history length
+
+def set_history_length(length=_history_length):
+    """
+    set_history_length(length) -> None
+    set the maximal number of items which will be written to
+    the history file. A negative length is used to inhibit
+    history truncation.
+    """
+    _history_length = length
+
+
+# Get history length
+
+def get_history_length():
+    """
+    get_history_length() -> int
+    return the maximum number of items that will be written to
+    the history file.
+    """
+    return _history_length
+
+# Generic hook function setter
+
+def set_hook(function=None):
+    pass
+
