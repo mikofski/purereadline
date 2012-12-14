@@ -145,17 +145,10 @@ def set_completion_display_matches_hook(PyObject *self, PyObject *args):
     result = set_hook(completion_display_matches_hook)
     # We cannot set this hook globally, since it replaces the
     #  default completion display.
-    libreadline.rl_completion_display_matches_hook =
-        completion_display_matches_hook ?
-#if defined(_RL_FUNCTION_TYPEDEF)
-        (rl_compdisp_func_t *)on_completion_display_matches_hook : 0;
-#else
-        (VFunction *)on_completion_display_matches_hook : 0;
-#endif
-#endif
-    return result;
+    if libreadline.rl_completion_display_matches_hook = completion_display_matches_hook:
+        # TODO: this needs some work!
+        #(libreadline.rl_compdisp_func_t *)on_completion_display_matches_hook
+    elif
+        0
+    return result
 
-}
-
-PyDoc_STRVAR(doc_set_completion_display_matches_hook,
-);
