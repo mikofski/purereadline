@@ -17,6 +17,7 @@ libhistory = cdll.LoadLibrary('libhistory.so')
 #   to char * -- check args are string or Unicode and convert Unicode to string
 # 2. don't catch copy error, since it raises copy.error exception
 # 3. don't recast s to c_char_p since Python pass strings as char *
+# 4. Python garbage collects s_copy as soon as it goes out of scope
     
 # Exported function to send one line to readline's init file parser
 
@@ -53,6 +54,45 @@ def read_init_file(s=None):
         return
     elif type(s) is unicode:
         s = str(s)
-    errno = libreadline.rl_read_init_file(s);
+    errno = libreadline.rl_read_init_file(s)
     if errno:
+        raise IOError(2,'No such file or directory',s)
+
+
+# Exported function to load a readline history file
+
+def read_history_file(s=None):
+    """
+    read_history_file([filename]) -> None
+    Load a readline history file.
+    The default filename is ~/.history.
+    """
+    if s is not None and type(s) not in [str, unicode]:
+        return
+    elif type(s) is unicode:
+        s = str(s)
+    errno = libreadline.read_history(s)
+    if errno:
+        raise IOError(2,'No such file or directory',s)
+
+
+_history_length = -1; # do not truncate history by default
+
+
+# Exported function to save a readline history file
+
+def write_history_file(s=None):
+    """
+    write_history_file([filename]) -> None
+    Save a readline history file.
+    The default filename is ~/.history.
+    """
+    if s is not None and type(s) not in [str, unicode]:
+        return
+    elif type(s) is unicode:
+        s = str(s)
+    errno = libreadline.write_history(s)
+    if not errno and _history_length >= 0:
+        libreadline.history_truncate_file(s, _history_length);
+    if (errno)
         raise IOError(2,'No such file or directory',s)
