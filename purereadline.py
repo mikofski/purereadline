@@ -43,13 +43,13 @@ def parse_and_bind(s):
 
 # Exported function to parse a readline init file
 
-def read_init_file(s):
+def read_init_file(s=None):
     """
     read_init_file([filename]) -> None
     Parse a readline initialization file.
     The default filename is the last filename used.
     """
-    if type(s) not in [str, unicode, None]:
+    if s is not None and type(s) not in [str, unicode]:
         return
     elif type(s) is unicode:
         s = str(s)
