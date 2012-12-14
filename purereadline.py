@@ -125,3 +125,37 @@ def get_history_length():
 def set_hook(function=None):
     pass
 
+
+# Exported functions to specify hook functions in Python
+
+completion_display_matches_hook = None
+startup_hook = None
+pre_input_hook = None
+
+
+def set_completion_display_matches_hook(PyObject *self, PyObject *args):
+    """
+    set_completion_display_matches_hook([function]) -> None
+    Set or remove the completion display function.
+    The function is called as
+    function(substitution, [matches], longest_match_length)
+    once each time matches need to be displayed.
+    """
+
+    result = set_hook(completion_display_matches_hook)
+    # We cannot set this hook globally, since it replaces the
+    #  default completion display.
+    libreadline.rl_completion_display_matches_hook =
+        completion_display_matches_hook ?
+#if defined(_RL_FUNCTION_TYPEDEF)
+        (rl_compdisp_func_t *)on_completion_display_matches_hook : 0;
+#else
+        (VFunction *)on_completion_display_matches_hook : 0;
+#endif
+#endif
+    return result;
+
+}
+
+PyDoc_STRVAR(doc_set_completion_display_matches_hook,
+);
