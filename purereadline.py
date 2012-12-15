@@ -3,6 +3,8 @@
 # Center.  The completer interface was inspired by Lele Gaifax.  More
 # recently, it was largely rewritten by Guido van Rossum.
 
+# This is a pure Python wrapper around `readine.c` which uses `ctypes`.
+
 from ctypes import *
 import copy
 
@@ -13,11 +15,10 @@ libhistory = cdll.LoadLibrary('libhistory.so')
 
 # parse_and_bind(*args)
 # =====================
-# 1. PyArg_parseTuple with format: "s" converts python string or Unicode object
-#   to char * -- check args are string or Unicode and convert Unicode to string
-# 2. don't catch copy error, since it raises copy.error exception
-# 3. don't recast s to c_char_p since Python pass strings as char *
-# 4. Python garbage collects s_copy as soon as it goes out of scope
+# The GNU readline `rl_parse_and_bind` takes <char *s>, a pointer to string.
+# Python-readline uses `PyArg_parseTuple` with the "s" formatter to check for
+# <str> or <unicode> args and converts them to <char *>. Then copies the pointer
+# (s) and passes the copy to libreadline.
     
 # Exported function to send one line to readline's init file parser
 
@@ -25,22 +26,28 @@ def parse_and_bind(s):
     """
     parse_and_bind(string) -> None
     Parse and execute single line of a readline init file.
-    """ 
+    """
+    # Only <str> or <unicode> input acceptable, otherwise return. If <unicode>,
+    # cast as <str>. Python passes <str> as <char *> to foreign library
+    # functions. -- MM 2012-12-15
     if type(s) not in [str, unicode]:
         return
     elif type(s) is unicode:
         s = str(s)
     # Make a copy -- rl_parse_and_bind() modifies its argument
     # Bernard Herzog
-    s_copy = copy.copy(s)
+    s_copy = copy.copy(s) # raises copy.error exception
     libreadline.rl_parse_and_bind(s_copy)
+    # s_copy garbage collected when function goes out of scope, right?
 
 
 # read_init_file(*args)
 # =====================
-# 1. PyArg_ParseTuple with format: "|z" converts python string, Unicode or None
-#   to char * or NULL -- check args and convert Unicode to string
-# 2. rl_read_init_file returns 0 on success, non-zero int on fail
+# GNU readline `rl_read_init_file` takes <char *s>, a pointer to a string which
+# defaults to `NULL`. Python-readline uses `PyArg_parseTuple with the "|z"
+# format to check for `None`, <str> or <unicode> args and converts `None` to
+# `NULL` and <str> and <unicode> to <char *>. GNU readline `rl_read_init_file`
+# returns 0 on success, non-zero <int> on fail.
 
 # Exported function to parse a readline init file
 
@@ -122,8 +129,13 @@ def get_history_length():
 
 # Generic hook function setter
 
-def set_hook(function=None):
-    pass
+def set_hook(function=None, hook_var):
+    if function is None:
+        hook_var = None
+    elif hasattr(function, '__call__'):
+        hook_var = function
+    else:
+        raise TypeError('object is not callable')
 
 
 # Exported functions to specify hook functions in Python
@@ -133,7 +145,7 @@ startup_hook = None
 pre_input_hook = None
 
 
-def set_completion_display_matches_hook(PyObject *self, PyObject *args):
+def set_completion_display_matches_hook(result):
     """
     set_completion_display_matches_hook([function]) -> None
     Set or remove the completion display function.
