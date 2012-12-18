@@ -153,7 +153,7 @@ startup_hook = None
 pre_input_hook = None
 
 
-def set_completion_display_matches_hook(result):
+def set_completion_display_matches_hook(function=None):
     """
     set_completion_display_matches_hook([function]) -> None
     Set or remove the completion display function.
@@ -162,13 +162,14 @@ def set_completion_display_matches_hook(result):
     once each time matches need to be displayed.
     """
 
-    result = set_hook(completion_display_matches_hook)
+    result = set_hook(function,completion_display_matches_hook)
     # We cannot set this hook globally, since it replaces the
     #  default completion display.
-    if libreadline.rl_completion_display_matches_hook = completion_display_matches_hook:
-        # TODO: this needs some work!
-        #(libreadline.rl_compdisp_func_t *)on_completion_display_matches_hook
+    if completion_display_matches_hook:
+        # TODO: need to deal with typedef and function pointers correctly
+        (libreadline.rl_completion_display_matches_hook
+            = (libreadline.rl_compdisp_func_t *)on_completion_display_matches_hook)
     elif
-        0
+        libreadline.rl_completion_display_matches_hook = 0
     return result
 
