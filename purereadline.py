@@ -15,9 +15,9 @@ libhistory = cdll.LoadLibrary('libhistory.so')
 
 # parse_and_bind(*args)
 # =====================
-# The GNU readline `rl_parse_and_bind` takes <char *s>, a pointer to string.
+# The GNU readline `rl_parse_and_bind` takes <char *s>, a pointer to a string.
 # Python-readline uses `PyArg_parseTuple` with the "s" formatter to check for
-# <str> or <unicode> args and converts them to <char *>. Then copies the pointer
+# <str> or <unicode> args and converts them to <char *>, then copies the pointer
 # (s) and passes the copy to libreadline.
     
 # Exported function to send one line to readline's init file parser
@@ -126,6 +126,15 @@ def get_history_length():
     the history file.
     """
     return _history_length
+
+
+# Python-readline `set_hook` takes a pointer to a string (*funcname), a pointer
+# to a pointer to a Python object (**hook_var) and a pointer to another Python
+# object (*args). It uses PyArg_parseTuple with a "|O" formatter to pass the
+# (*args) as a PyObject pointer into (&function). It uses the string (funcname)
+# to generate the formater, which it stores in a character array (buf), which is
+# 80 bytes long, using the function `PyOS_snprintf`. The default value of
+# (functon) is `None`.
 
 # Generic hook function setter
 
