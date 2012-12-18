@@ -6,7 +6,6 @@
 # This is a pure Python wrapper around `readine.c` which uses `ctypes`.
 
 from ctypes import *
-import copy
 
 # libreadline.so and libhistory.so must be on LD_LIBRARY_PATH
 libreadline = cdll.LoadLibrary('libreadline.so')
@@ -36,9 +35,9 @@ def parse_and_bind(s):
         s = str(s)
     # Make a copy -- rl_parse_and_bind() modifies its argument
     # Bernard Herzog
-    s_copy = copy.copy(s) # raises copy.error exception
+    s_copy = create_string_buffer(s) # raises TypeError exception
     libreadline.rl_parse_and_bind(s_copy)
-    # s_copy garbage collected when function goes out of scope, right?
+    del(p)
 
 
 # read_init_file(*args)
