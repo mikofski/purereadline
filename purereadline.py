@@ -3,7 +3,8 @@
 # Center.  The completer interface was inspired by Lele Gaifax.  More
 # recently, it was largely rewritten by Guido van Rossum.
 
-# This is a pure Python wrapper around `readine.c` which uses `ctypes`.
+# This is a pure Python wrapper around GNU libreadine using `ctypes`, adapted
+# from python-readline.
 
 from ctypes import *
 
@@ -11,15 +12,23 @@ from ctypes import *
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
 
-# GNU readline defines a number of new object types that are function pointers.
-# We need to redefine them in Python.
-RL_COMPDISP_FUNC_T = CFUNCTYPE(c_void_p, POINTER(c_char_p), c_int, c_int)
+# GNU readline defines new object types that are function pointers. We need to
+# redefine them in Python.
+RL_COMPDISP_FUNC_T = CFUNCTYPE(None, POINTER(c_char_p), c_int, c_int)
+RL_COMPENTRY_FUNC_T = CFUNCTYPE(c_char_p, c_char_p, c_int)
+RL_HOOK_FUNC_T = CFUNCTYPE(c_int, None)
 
 # GNU readline variables:
-rl_completion_display_matches_hook = RL_COMPDISP_FUNC_T.in_dll(libreadline,
-    "rl_completion_display_matches_hook")
+rl_completion_display_matches_hook = POINTER(RL_COMPDISP_FUNC_T).in_dll(
+    libreadline, "rl_completion_display_matches_hook")
+rl_pre_input_hook = POINTER(RL_HOOK_FUNC_T).in_dll(libreadline,
+    "rl_pre_input_hook")
+rl_completion_type = c_int.in_dll(libreadline, "rl_completion_type")
 
 # GNU readline functions: specify required argument and return types
+rl_completion_matches = libreadline.rl_completion_matches
+rl_completion_matches.argtypes = [c_char_p, POINTER(RL_COMPENTRY_FUNC_T)]
+rl_completion_matches.restype = POINTER(c_char_p)
 rl_parse_and_bind = libreadline.rl_parse_and_bind
 rl_parse_and_bind.argtypes = [c_char_p] # mutable
 rl_parse_and_bind.restype = c_int
@@ -35,6 +44,10 @@ write_history.restype = c_int
 history_truncate_file = libreadline.history_truncate_file
 history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
 history_truncate_file.restype = c_int
+
+
+def completion_matches(text, entry_func):
+    return rl_completion_matches(text, POINTER(RL_COMPENTRY_FUNC_T(entry_func)))
 
 
 # parse_and_bind(PyObject *self, PyObject *args)
@@ -107,7 +120,6 @@ def read_history_file(s=None):
 
 _history_length = -1 # do not truncate history by default
 
-
 # Exported function to save a readline history file
 
 def write_history_file(s=None):
@@ -149,6 +161,7 @@ def get_history_length():
     """
     return _history_length
 
+
 # set_hook(const char *funcname, PyObject **hook_var, PyObject *args)
 # ===================================================================
 # Python-readline uses PyArg_parseTuple with a "|O" formatter to check for a
@@ -160,9 +173,9 @@ def set_hook(function=None, hook_var):
     # if function is `None`, set hook_var to `None`, otherwise set hook_var to
     # function or raise exception if function is not callable.
     if function is None:
-        hook_var = None
+        hook_var = pointer(None)
     elif hasattr(function, '__call__'):
-        hook_var = function
+        hook_var = pointer(function)
     else:
         raise TypeError('object is not callable')
 
@@ -173,7 +186,6 @@ completion_display_matches_hook = None
 startup_hook = None
 pre_input_hook = None
 
-
 def set_completion_display_matches_hook(function=None):
     """
     set_completion_display_matches_hook([function]) -> None
@@ -182,14 +194,49 @@ def set_completion_display_matches_hook(function=None):
     function(substitution, [matches], longest_match_length)
     once each time matches need to be displayed.
     """
-
     result = set_hook(function,completion_display_matches_hook)
     # We cannot set this hook globally, since it replaces the
     #  default completion display.
     if completion_display_matches_hook:
         (rl_completion_display_matches_hook
-            = RL_COMPDISP_FUNC_T(on_completion_display_matches_hook)
+            = POINTER(RL_COMPDISP_FUNC_T(on_completion_display_matches_hook)))
     elif
         rl_completion_display_matches_hook = 0
     return result
 
+
+def set_startup_hook(function=None):
+    """
+    set_startup_hook([function]) -> None
+    Set or remove the startup_hook function.
+    The function is called with no arguments just
+    before readline prints the first prompt.
+    """
+    return set_hook(function, startup_hook)
+
+
+def set_pre_input_hook(function=None):
+    """
+    set_pre_input_hook([function]) -> None
+    Set or remove the pre_input_hook function.
+    The function is called with no arguments after the first prompt
+    has been printed and just before readline starts reading input
+    characters.
+    """
+    return set_hook(function, pre_input_hook)
+
+
+# Exported function to specify a word completer in Python
+
+completer = None
+begidx = None
+endidx = None
+
+
+# Get the completion type for the scope of the tab-completion
+def get_completion_type():
+    """
+    get_completion_type() -> int
+    Get the type of completion being attempted.
+    """
+    return rl_completion_type
