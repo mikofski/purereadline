@@ -11,7 +11,15 @@ from ctypes import *
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
 
-# readline functions: specify required argument and return types
+# GNU readline defines a number of new object types that are function pointers.
+# We need to redefine them in Python.
+RL_COMPDISP_FUNC_T = CFUNCTYPE(c_void_p, POINTER(c_char_p), c_int, c_int)
+
+# GNU readline variables:
+rl_completion_display_matches_hook = RL_COMPDISP_FUNC_T.in_dll(libreadline,
+    "rl_completion_display_matches_hook")
+
+# GNU readline functions: specify required argument and return types
 rl_parse_and_bind = libreadline.rl_parse_and_bind
 rl_parse_and_bind.argtypes = [c_char_p] # mutable
 rl_parse_and_bind.restype = c_int
@@ -27,6 +35,7 @@ write_history.restype = c_int
 history_truncate_file = libreadline.history_truncate_file
 history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
 history_truncate_file.restype = c_int
+
 
 # parse_and_bind(PyObject *self, PyObject *args)
 # ==============================================
@@ -178,10 +187,9 @@ def set_completion_display_matches_hook(function=None):
     # We cannot set this hook globally, since it replaces the
     #  default completion display.
     if completion_display_matches_hook:
-        # TODO: need to deal with typedef and function pointers correctly
-        (libreadline.rl_completion_display_matches_hook
-            = (libreadline.rl_compdisp_func_t *)on_completion_display_matches_hook)
+        (rl_completion_display_matches_hook
+            = RL_COMPDISP_FUNC_T(on_completion_display_matches_hook)
     elif
-        libreadline.rl_completion_display_matches_hook = 0
+        rl_completion_display_matches_hook = 0
     return result
 
