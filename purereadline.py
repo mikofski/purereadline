@@ -11,10 +11,25 @@ from ctypes import *
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
 
+# readline functions: specify required argument and return types
+rl_parse_and_bind = libreadline.rl_parse_and_bind
+rl_parse_and_bind.argtypes = [c_char_p] # mutable
+rl_parse_and_bind.restype = c_int
+rl_read_init_file = libreadline.rl_read_init_file
+rl_read_init_file.argtypes = [c_char_p] # constant
+rl_read_init_file.restype = c_int
+read_history = libhistory.read_history
+read_history.argtypes = [c_char_p] # constant
+read_history.restype = c_int
+write_history = libhistory.write_history
+write_history.argtypes = [c_char_p] # constant
+write_history.restype = c_int
+history_truncate_file = libreadline.history_truncate_file
+history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
+history_truncate_file.restype = c_int
 
-# parse_and_bind(*args)
-# =====================
-# The GNU readline `rl_parse_and_bind` takes <char *s>, a pointer to a string.
+# parse_and_bind(PyObject *self, PyObject *args)
+# ==============================================
 # Python-readline uses `PyArg_parseTuple` with the "s" formatter to check for
 # <str> or <unicode> args and converts them to <char *>, then copies the pointer
 # (s) and passes the copy to libreadline.
@@ -27,8 +42,8 @@ def parse_and_bind(s):
     Parse and execute single line of a readline init file.
     """
     # Only <str> or <unicode> input acceptable, otherwise return. If <unicode>,
-    # cast as <str>. Python passes <str> as <char *> to foreign library
-    # functions. -- MM 2012-12-15
+    # cast as <str>. Python string is immutable, so use `create_string_buffer()`
+    # which points to mutable memory, and pass it to libreadline instead.
     if type(s) not in [str, unicode]:
         return
     elif type(s) is unicode:
@@ -36,17 +51,16 @@ def parse_and_bind(s):
     # Make a copy -- rl_parse_and_bind() modifies its argument
     # Bernard Herzog
     s_copy = create_string_buffer(s) # raises TypeError exception
-    libreadline.rl_parse_and_bind(s_copy)
-    del(p)
+    rl_parse_and_bind(s_copy)
+    del(s_copy)
 
 
-# read_init_file(*args)
-# =====================
-# GNU readline `rl_read_init_file` takes <char *s>, a pointer to a string which
-# defaults to `NULL`. Python-readline uses `PyArg_parseTuple with the "|z"
-# format to check for `None`, <str> or <unicode> args and converts `None` to
-# `NULL` and <str> and <unicode> to <char *>. GNU readline `rl_read_init_file`
-# returns 0 on success, non-zero <int> on fail.
+# read_init_file(PyObject *self, PyObject *args)
+# ==============================================
+# Python-readline uses `PyArg_parseTuple with the "|z" format to check for
+# `None`, <str> or <unicode> args and converts `None` to `NULL` and <str> and
+# <unicode> to <char *>. GNU readline `rl_read_init_file` returns 0 on success,
+# non-zero <int> on fail.
 
 # Exported function to parse a readline init file
 
@@ -60,7 +74,7 @@ def read_init_file(s=None):
         return
     elif type(s) is unicode:
         s = str(s)
-    errno = libreadline.rl_read_init_file(s)
+    errno = rl_read_init_file(s)
     if errno:
         raise IOError(2,'No such file or directory',s)
 
@@ -77,7 +91,7 @@ def read_history_file(s=None):
         return
     elif type(s) is unicode:
         s = str(s)
-    errno = libreadline.read_history(s)
+    errno = read_history(s)
     if errno:
         raise IOError(2,'No such file or directory',s)
 
@@ -97,9 +111,9 @@ def write_history_file(s=None):
         return
     elif type(s) is unicode:
         s = str(s)
-    errno = libreadline.write_history(s)
+    errno = write_history(s)
     if not errno and _history_length >= 0:
-        libreadline.history_truncate_file(s, _history_length)
+        history_truncate_file(s, _history_length)
     if (errno)
         raise IOError(2,'No such file or directory',s)
 
@@ -126,18 +140,16 @@ def get_history_length():
     """
     return _history_length
 
-
-# Python-readline `set_hook` takes a pointer to a string (*funcname), a pointer
-# to a pointer to a Python object (**hook_var) and a pointer to another Python
-# object (*args). It uses PyArg_parseTuple with a "|O" formatter to pass the
-# (*args) as a PyObject pointer into (&function). It uses the string (funcname)
-# to generate the formater, which it stores in a character array (buf), which is
-# 80 bytes long, using the function `PyOS_snprintf`. The default value of
-# (functon) is `None`.
+# set_hook(const char *funcname, PyObject **hook_var, PyObject *args)
+# ===================================================================
+# Python-readline uses PyArg_parseTuple with a "|O" formatter to check for a
+# PyObject pointer which may be Py_None.
 
 # Generic hook function setter
 
 def set_hook(function=None, hook_var):
+    # if function is `None`, set hook_var to `None`, otherwise set hook_var to
+    # function or raise exception if function is not callable.
     if function is None:
         hook_var = None
     elif hasattr(function, '__call__'):
