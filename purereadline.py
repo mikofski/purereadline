@@ -173,9 +173,9 @@ def set_hook(function=None, hook_var):
     # if function is `None`, set hook_var to `None`, otherwise set hook_var to
     # function or raise exception if function is not callable.
     if function is None:
-        hook_var = pointer(None)
+        hook_var.contents.value = None
     elif hasattr(function, '__call__'):
-        hook_var = pointer(function)
+        hook_var.contents.value = function
     else:
         raise TypeError('object is not callable')
 
@@ -194,7 +194,10 @@ def set_completion_display_matches_hook(function=None):
     function(substitution, [matches], longest_match_length)
     once each time matches need to be displayed.
     """
-    result = set_hook(function,completion_display_matches_hook)
+    # TODO: use CFUNTYPE to define function types instead of using generic
+    # "Python object" type.
+    result = set_hook(function,
+        pointer(py_object(completion_display_matches_hook)))
     # We cannot set this hook globally, since it replaces the
     #  default completion display.
     if completion_display_matches_hook:
@@ -212,7 +215,9 @@ def set_startup_hook(function=None):
     The function is called with no arguments just
     before readline prints the first prompt.
     """
-    return set_hook(function, startup_hook)
+    # TODO: use CFUNTYPE to define function types instead of using generic
+    # "Python object" type.
+    return set_hook(function, pointer(py_object(startup_hook)))
 
 
 def set_pre_input_hook(function=None):
@@ -223,7 +228,9 @@ def set_pre_input_hook(function=None):
     has been printed and just before readline starts reading input
     characters.
     """
-    return set_hook(function, pre_input_hook)
+    # TODO: use CFUNTYPE to define function types instead of using generic
+    # "Python object" type.
+    return set_hook(function, pointer(py_object(pre_input_hook)))
 
 
 # Exported function to specify a word completer in Python
