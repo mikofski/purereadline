@@ -285,7 +285,6 @@ def set_completer_delims(break_chars):
         return
     elif type(break_chars) == unicode:
         break_chars = str(break_chars)
-    copy_break_chars = create_string_buffer(break_chars)
     free(cast(rl_completer_word_break_characters, c_void_p))
-    rl_completer_word_break_characters = copy_break_chars
+    rl_completer_word_break_characters = create_string_buffer(break_chars)
 
