@@ -11,6 +11,7 @@ from ctypes import *
 # libreadline.so and libhistory.so must be on LD_LIBRARY_PATH
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
+libc = cdll.LoadLibrary("libc.so")
 
 # GNU readline defines new object types that are function pointers. We need to
 # redefine them in Python.
@@ -24,6 +25,8 @@ rl_completion_display_matches_hook = POINTER(RL_COMPDISP_FUNC_T).in_dll(
 rl_pre_input_hook = POINTER(RL_HOOK_FUNC_T).in_dll(libreadline,
     "rl_pre_input_hook")
 rl_completion_type = c_int.in_dll(libreadline, "rl_completion_type")
+rl_completer_word_break_characters = c_char_p.in_dll(libreadline,
+    "rl_completer_word_break_characters") # constant
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -44,6 +47,9 @@ write_history.restype = c_int
 history_truncate_file = libreadline.history_truncate_file
 history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
 history_truncate_file.restype = c_int
+free = libc.free
+free.argtypes = [c_void_p]
+free.restype = None
 
 
 def completion_matches(text, entry_func):
@@ -68,7 +74,7 @@ def parse_and_bind(s):
     # which points to mutable memory, and pass it to libreadline instead.
     if type(s) not in [str, unicode]:
         return
-    elif type(s) is unicode:
+    elif type(s) == unicode:
         s = str(s)
     # Make a copy -- rl_parse_and_bind() modifies its argument
     # Bernard Herzog
@@ -92,9 +98,9 @@ def read_init_file(s=None):
     Parse a readline initialization file.
     The default filename is the last filename used.
     """
-    if s is not None and type(s) not in [str, unicode]:
+    if s != None and type(s) not in [str, unicode]:
         return
-    elif type(s) is unicode:
+    elif type(s) == unicode:
         s = str(s)
     errno = rl_read_init_file(s)
     if errno:
@@ -109,9 +115,9 @@ def read_history_file(s=None):
     Load a readline history file.
     The default filename is ~/.history.
     """
-    if s is not None and type(s) not in [str, unicode]:
+    if s != None and type(s) not in [str, unicode]:
         return
-    elif type(s) is unicode:
+    elif type(s) == unicode:
         s = str(s)
     errno = read_history(s)
     if errno:
@@ -128,9 +134,9 @@ def write_history_file(s=None):
     Save a readline history file.
     The default filename is ~/.history.
     """
-    if s is not None and type(s) not in [str, unicode]:
+    if s != None and type(s) not in [str, unicode]:
         return
-    elif type(s) is unicode:
+    elif type(s) == unicode:
         s = str(s)
     errno = write_history(s)
     if not errno and _history_length >= 0:
@@ -172,7 +178,7 @@ def get_history_length():
 def set_hook(function=None, hook_var):
     # if function is `None`, set hook_var to `None`, otherwise set hook_var to
     # function or raise exception if function is not callable.
-    if function is None:
+    if function == None:
         hook_var.contents.value = None
     elif hasattr(function, '__call__'):
         hook_var.contents.value = function
@@ -266,4 +272,20 @@ def get_endidx():
     get the ending index of the readline tab-completion scope
     """
     return endidx;
+
+
+# Set the tab-completion word-delimiters that readline uses
+
+def set_completer_delims(break_chars):
+    """
+    set_completer_delims(string) -> None
+    set the readline word delimiters for tab-completion
+    """
+    if type(break_chars) not in [str, unicode]:
+        return
+    elif type(break_chars) == unicode:
+        break_chars = str(break_chars)
+    copy_break_chars = create_string_buffer(break_chars)
+    free(cast(rl_completer_word_break_characters, c_void_p))
+    rl_completer_word_break_characters = copy_break_chars
 
