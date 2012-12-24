@@ -11,7 +11,6 @@ from ctypes import *
 # libreadline.so and libhistory.so must be on LD_LIBRARY_PATH
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
-libc = cdll.LoadLibrary("libc.so")
 
 # GNU readline defines new object types that are function pointers. We need to
 # redefine them in Python.
@@ -47,9 +46,6 @@ write_history.restype = c_int
 history_truncate_file = libreadline.history_truncate_file
 history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
 history_truncate_file.restype = c_int
-free = libc.free
-free.argtypes = [c_void_p]
-free.restype = None
 
 
 def completion_matches(text, entry_func):
@@ -285,6 +281,5 @@ def set_completer_delims(break_chars):
         return
     elif type(break_chars) == unicode:
         break_chars = str(break_chars)
-    free(cast(rl_completer_word_break_characters, c_void_p))
-    rl_completer_word_break_characters = create_string_buffer(break_chars)
+    rl_completer_word_break_characters = break_chars
 
