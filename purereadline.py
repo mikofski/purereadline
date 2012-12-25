@@ -281,5 +281,7 @@ def set_completer_delims(break_chars):
         return
     elif type(break_chars) == unicode:
         break_chars = str(break_chars)
-    rl_completer_word_break_characters = break_chars
+    # Not going to `free` malloc'd memory. Future Python strings will garbage
+    # collect themselves. `create_string_buffer` not necessary.
+    rl_completer_word_break_characters.value = break_chars
 
