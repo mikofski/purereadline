@@ -46,7 +46,44 @@ write_history.restype = c_int
 history_truncate_file = libreadline.history_truncate_file
 history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
 history_truncate_file.restype = c_int
+free_history_entry = libhistory.free_history_entry
+free_history_entry.argtypes = [HIST_ENTRY]
+free_history_entry.restype = histdata_t
 
+
+# GNU readline structures:
+class histdata_t(object):
+    def __init__(self, number=None):
+        self._as_parameter_ = c_void_p(number)
+    @classmethod
+    def from_params(cls, histdata_t):
+        histdata_type = type(histdata_t)
+        if histdata_type == c_void_p:
+            return histdata_t
+        elif histdata_type == bool:
+            return cast(pointer(c_bool(histdata_t)), c_void_p)
+        elif histdata_type in [int, long]:
+            return cast(pointer(c_int(histdata_t)), c_void_p)
+        elif histdata_type == float:
+            return cast(pointer(c_float(histdata_t)), c_void_p)
+        elif histdata_type in [str, unicode]:
+            return cast(c_char_p(histdata_t), c_void_p)
+        elif histdata_type in [c_bool, c_char, c_wchar, c_byte, c_ubyte,
+                               c_short, c_ushort, c_int, c_uint, c_long,
+                               c_ulong, c_longlong, c_ulonglong, c_float,
+                               c_double, c_longdouble]:
+            return cast(pointer(histdata_t), c_void_p)
+        elif histdata_type  in [c_char_p, c_wchar_p]:
+            return cast(histdata_t, c_void_p)
+        else:
+            raise TypeError
+
+
+class HIST_ENTRY(Structure):
+    _fields_ = [("line", c_char_p),
+                ("timestamp", c_char_p),
+                ("data", histdata_t)]
+    
 
 def completion_matches(text, entry_func):
     return rl_completion_matches(text, POINTER(RL_COMPENTRY_FUNC_T(entry_func)))
@@ -284,4 +321,14 @@ def set_completer_delims(break_chars):
     # Not going to `free` malloc'd memory. Future Python strings will garbage
     # collect themselves. `create_string_buffer` not necessary.
     rl_completer_word_break_characters.value = break_chars
+
+# _py_free_history_entry: Utility function to free a history entry.
+
+# Readline version >= 5.0 introduced a timestamp field into the history entry
+# structure; this needs to be freed to avoid a memory leak.  This version of
+# readline also introduced the handy 'free_history_entry' function, which
+# takes care of the timestamp.
+
+def _py_free_history_entry(entry):
+    data = free_history_entry(entry)
 
