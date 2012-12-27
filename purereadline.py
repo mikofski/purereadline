@@ -47,8 +47,11 @@ history_truncate_file = libreadline.history_truncate_file
 history_truncate_file.argtypes = [c_char_p, c_int] # string is constant
 history_truncate_file.restype = c_int
 free_history_entry = libhistory.free_history_entry
-free_history_entry.argtypes = [HIST_ENTRY]
+free_history_entry.argtypes = [POINTER(HIST_ENTRY)]
 free_history_entry.restype = histdata_t
+remove_history = libhistory.remove_history
+remove_history.argtypes = [c_int]
+remove_history.restype = POINTER(HIST_ENTRY)
 
 
 # GNU readline structures:
@@ -89,7 +92,7 @@ class HIST_ENTRY(Structure):
     _fields_ = [("line", c_char_p),
                 ("timestamp", c_char_p),
                 ("data", histdata_t)]
-    
+
 
 def completion_matches(text, entry_func):
     return rl_completion_matches(text, POINTER(RL_COMPENTRY_FUNC_T(entry_func)))
@@ -300,7 +303,7 @@ def get_begidx():
     get_begidx() -> int
     get the beginning index of the readline tab-completion scope
     """
-    return begidx;
+    return begidx
 
 
 # Get the ending index for the scope of the tab-completion
@@ -310,7 +313,7 @@ def get_endidx():
     get_endidx() -> int
     get the ending index of the readline tab-completion scope
     """
-    return endidx;
+    return endidx
 
 
 # Set the tab-completion word-delimiters that readline uses
@@ -337,4 +340,20 @@ def set_completer_delims(break_chars):
 
 def _py_free_history_entry(entry):
     data = free_history_entry(entry)
+    # Not going to free data.
+
+def py_remove_history(entry_number):
+    """
+    remove_history_item(pos) -> None
+    remove history item given by its position
+    """
+    if type(entry_number) != int:
+        return
+    elif entry_number < 0:
+        raise ValueError("History index cannot be negative")
+    entry = remove_history(entry_number)
+    if (!entry):
+        raise ValueError("No history item at position %d" % entry_number)
+    # free memory allocated for the history entry
+    _py_free_history_entry(entry)
 
