@@ -53,30 +53,37 @@ free_history_entry.restype = histdata_t
 
 # GNU readline structures:
 class histdata_t(object):
-    def __init__(self, number=None):
-        self._as_parameter_ = c_void_p(number)
-    @classmethod
-    def from_params(cls, histdata_t):
-        histdata_type = type(histdata_t)
-        if histdata_type == c_void_p:
-            return histdata_t
-        elif histdata_type == bool:
-            return cast(pointer(c_bool(histdata_t)), c_void_p)
-        elif histdata_type in [int, long]:
-            return cast(pointer(c_int(histdata_t)), c_void_p)
-        elif histdata_type == float:
-            return cast(pointer(c_float(histdata_t)), c_void_p)
-        elif histdata_type in [str, unicode]:
-            return cast(c_char_p(histdata_t), c_void_p)
-        elif histdata_type in [c_bool, c_char, c_wchar, c_byte, c_ubyte,
+    def __init__(self, data=None):    
+        self.value = data
+        datatype = type(data)
+        if data == None:
+            self._as_parameter_ = c_void_p()
+        elif datatype == c_void_p:
+            self._as_parameter_ = data
+        elif datatype == bool:
+            self._as_parameter_ = cast(pointer(c_bool(data)), c_void_p)
+        elif datatype in [int, long]:
+            self._as_parameter_ = cast(pointer(c_int(data)), c_void_p)
+        elif datatype == float:
+            self._as_parameter_ = cast(pointer(c_float(data)), c_void_p)
+        elif datatype in [str, unicode]:
+            self._as_parameter_ = cast(c_char_p(data), c_void_p)
+        elif datatype in [c_bool, c_char, c_wchar, c_byte, c_ubyte,
                                c_short, c_ushort, c_int, c_uint, c_long,
                                c_ulong, c_longlong, c_ulonglong, c_float,
                                c_double, c_longdouble]:
-            return cast(pointer(histdata_t), c_void_p)
-        elif histdata_type  in [c_char_p, c_wchar_p]:
-            return cast(histdata_t, c_void_p)
+            self._as_parameter_ = cast(pointer(data), c_void_p)
+        elif datatype  in [c_char_p, c_wchar_p]:
+            self._as_parameter_ = cast(data, c_void_p)
         else:
-            raise TypeError
+            raise TypeError('A pointer to a void type <c_void_p> is required.')
+    def __str__(self):
+        return str(self._as_parameter_)
+    def __repr__(self):
+        return repr(self._as_parameter_)
+    @classmethod
+    def from_params(cls, histdata_t):
+        return histdata_t._as_parameter_
 
 
 class HIST_ENTRY(Structure):
