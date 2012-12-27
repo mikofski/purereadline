@@ -68,10 +68,9 @@ class histdata_t(object):
             self._as_parameter_ = cast(pointer(c_float(data)), c_void_p)
         elif datatype in [str, unicode]:
             self._as_parameter_ = cast(c_char_p(data), c_void_p)
-        elif datatype in [c_bool, c_char, c_wchar, c_byte, c_ubyte,
-                               c_short, c_ushort, c_int, c_uint, c_long,
-                               c_ulong, c_longlong, c_ulonglong, c_float,
-                               c_double, c_longdouble]:
+        elif datatype in [c_bool, c_char, c_wchar, c_byte, c_ubyte, c_short,
+                          c_ushort, c_int, c_uint, c_long, c_ulong, c_longlong,
+                          c_ulonglong, c_float, c_double, c_longdouble]:
             self._as_parameter_ = cast(pointer(data), c_void_p)
         elif datatype  in [c_char_p, c_wchar_p]:
             self._as_parameter_ = cast(data, c_void_p)
