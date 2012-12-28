@@ -373,3 +373,15 @@ def get_completer_delims():
     """
     return rl_completer_word_break_characters.value
 
+# Set the completer function
+
+def set_completer(function=None):
+    """
+    set_completer([function]) -> None
+    Set or remove the completer function.
+    The function is called as function(text, state),
+    for state in 0, 1, 2, ..., until it returns a non-string.
+    It should return the next possible completion starting with 'text'.
+    """
+    return set_hook(function, pointer(py_object(completer)))
+
