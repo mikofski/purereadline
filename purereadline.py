@@ -363,3 +363,13 @@ def py_add_history(line):
         line = str(line)
     add_history(line)
 
+
+# Get the tab-completion word-delimiters that readline uses
+
+def get_completer_delims():
+    """
+    get_completer_delims() -> string
+    get the readline word delimiters for tab-completion
+    """
+    return rl_completer_word_break_characters.value
+
