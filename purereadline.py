@@ -272,6 +272,7 @@ def get_completion_type():
     """
     return rl_completion_type
 
+
 # Get the beginning index for the scope of the tab-completion
 
 def get_begidx():
@@ -307,6 +308,7 @@ def set_completer_delims(break_chars):
     # collect themselves. `create_string_buffer` not necessary.
     rl_completer_word_break_characters.value = break_chars
 
+
 # _py_free_history_entry: Utility function to free a history entry.
 
 # Readline version >= 5.0 introduced a timestamp field into the history entry
@@ -317,6 +319,7 @@ def set_completer_delims(break_chars):
 def _py_free_history_entry(entry):
     data = free_history_entry(entry)
     # Not going to free data.
+
 
 def py_remove_history(entry_number):
     """
@@ -373,6 +376,7 @@ def get_completer_delims():
     """
     return rl_completer_word_break_characters.value
 
+
 # Set the completer function
 
 def set_completer(function=None):
@@ -384,4 +388,12 @@ def set_completer(function=None):
     It should return the next possible completion starting with 'text'.
     """
     return set_hook(function, pointer(py_object(completer)))
+
+
+def get_completer():
+    """
+    get_completer() -> function
+    Returns current completer function.
+    """
+    return completer
 
