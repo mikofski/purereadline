@@ -91,7 +91,7 @@ class histdata_t(object):
 class HIST_ENTRY(Structure):
     _fields_ = [("line", c_char_p),
                 ("timestamp", c_char_p),
-                ("data", histdata_t)]
+                ("data", c_void_p)]
 
 
 def completion_matches(text, entry_func):
