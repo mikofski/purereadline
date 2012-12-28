@@ -52,10 +52,13 @@ free_history_entry.restype = histdata_t
 remove_history = libhistory.remove_history
 remove_history.argtypes = [c_int]
 remove_history.restype = POINTER(HIST_ENTRY)
+replace_history_entry = libhistory.replace_history_entry
+replace_history_entry.argtypes = [c_int, c_char_p, histdata_t]
+replace_history_entry.restype = POINTER(HIST_ENTRY)
 
 
 # GNU readline structures:
-histdata_t = c_void_p # 
+histdata_t = c_void_p
 
 
 class HIST_ENTRY(Structure):
@@ -326,4 +329,21 @@ def py_remove_history(entry_number):
         raise ValueError("No history item at position %d" % entry_number)
     # free memory allocated for the history entry
     _py_free_history_entry(entry)
+
+
+def py_replace_history(entry_number, line):
+    """
+    replace_history_item(pos, line) -> None\n\
+    replaces history item given by its position with contents of line
+    """
+    if type(entry_number) != int or type(line) in [str, unicode]:
+        return
+    elif entry_number < 0:
+        raise ValueError("History index cannot be negative")
+    old_entry = replace_history_entry(entry_number, line, c_void_p(None))
+    if (!old_entry):
+        raise ValueError("No history item at position %d" % entry_number)
+    # free memory allocated for the history entry
+    _py_free_history_entry(old_entry)
+
 
