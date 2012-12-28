@@ -16,7 +16,7 @@ libhistory = cdll.LoadLibrary('libhistory.so')
 # redefine them in Python.
 RL_COMPDISP_FUNC_T = CFUNCTYPE(None, POINTER(c_char_p), c_int, c_int)
 RL_COMPENTRY_FUNC_T = CFUNCTYPE(c_char_p, c_char_p, c_int)
-RL_HOOK_FUNC_T = CFUNCTYPE(c_int, None)
+RL_HOOK_FUNC_T = CFUNCTYPE(c_int)
 
 # GNU readline variables:
 rl_completion_display_matches_hook = POINTER(RL_COMPDISP_FUNC_T).in_dll(
@@ -58,6 +58,9 @@ replace_history_entry.restype = POINTER(HIST_ENTRY)
 add_history = libhistory.add_history
 add_history.argtypes = [c_char_p]
 add_history.restype = None
+history_get_history_state = libhistory.history_get_history_state
+history_get_history_state.argtypes = []
+history_get_history_state.restype = POINTER(HISTORY_STATE)
 
 
 # GNU readline structures:
@@ -68,6 +71,17 @@ class HIST_ENTRY(Structure):
     _fields_ = [("line", c_char_p),
                 ("timestamp", c_char_p),
                 ("data", histdata_t)]
+
+
+# A structure used to pass around the current state of the history.
+
+class HISTORY_STATE(Structure):
+    # Pointer to the entries themselves.
+    _fields_ = [("entries", POINTER(POINTER(HIST_ENTRY)),
+                ("offset", c_int), # The location pointer within this array.
+                ("length", c_int), # Number of elements within this array.
+                ("size", c_int),  # Number of slots allocated to this array.
+                ("flags", c_int)]
 
 
 def completion_matches(text, entry_func):
@@ -396,4 +410,20 @@ def get_completer():
     Returns current completer function.
     """
     return completer
+
+# Private function to get current length of history.  XXX It may be
+# possible to replace this with a direct use of history_length instead,
+# but it's not clear whether BSD's libedit keeps history_length up to date.
+# See issue #8065.
+
+def _py_get_history_length():
+    hist_st = history_get_history_state()
+    length = hist_st.length
+    # the history docs don't say so, but the address of hist_st changes each
+    # time history_get_history_state is called which makes me think it's
+    # freshly malloc'd memory...  on the other hand, the address of the last
+    # line stays the same as long as history isn't extended, so it appears to
+    # be malloc'd but managed by the history package... */
+    # Not going to free hist_st, should be garbage collected by Python
+    return length;
 
