@@ -55,6 +55,9 @@ remove_history.restype = POINTER(HIST_ENTRY)
 replace_history_entry = libhistory.replace_history_entry
 replace_history_entry.argtypes = [c_int, c_char_p, histdata_t]
 replace_history_entry.restype = POINTER(HIST_ENTRY)
+add_history = libhistory.add_history
+add_history.argtypes = [c_char_p]
+add_history.restype = None
 
 
 # GNU readline structures:
@@ -333,10 +336,10 @@ def py_remove_history(entry_number):
 
 def py_replace_history(entry_number, line):
     """
-    replace_history_item(pos, line) -> None\n\
+    replace_history_item(pos, line) -> None
     replaces history item given by its position with contents of line
     """
-    if type(entry_number) != int or type(line) in [str, unicode]:
+    if type(entry_number) != int or type(line) not in [str, unicode]:
         return
     elif entry_number < 0:
         raise ValueError("History index cannot be negative")
@@ -346,4 +349,17 @@ def py_replace_history(entry_number, line):
     # free memory allocated for the history entry
     _py_free_history_entry(old_entry)
 
+
+# Add a line to the history buffer
+
+def py_add_history(line):
+    """
+    add_history(string) -> None
+    add a line to the history buffer
+    """
+    if type(line) not in [str, unicode]:
+        return
+    elif type(line) == unicode:
+        line = str(line)
+    add_history(line)
 
