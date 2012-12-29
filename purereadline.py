@@ -61,6 +61,9 @@ add_history.restype = None
 history_get_history_state = libhistory.history_get_history_state
 history_get_history_state.argtypes = []
 history_get_history_state.restype = POINTER(HISTORY_STATE)
+history_get = libhistory.history_get
+history_get.argtypes = [c_int]
+history_get.restype = POINTER(HIST_ENTRY)
 
 
 # GNU readline structures:
@@ -426,4 +429,18 @@ def _py_get_history_length():
     # be malloc'd but managed by the history package... */
     # Not going to free hist_st, should be garbage collected by Python
     return length;
+
+
+# Exported function to get any element of history
+
+def get_history_item(idx=0):
+    """
+    get_history_item() -> string
+    return the current contents of history item at index.
+    """
+    if type(idx) != int:
+        return
+    hist_ent = history_get(idx)
+    if hist_ent:
+        return hist_ent.line
 
