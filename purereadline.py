@@ -25,7 +25,8 @@ rl_pre_input_hook = POINTER(RL_HOOK_FUNC_T).in_dll(libreadline,
     "rl_pre_input_hook")
 rl_completion_type = c_int.in_dll(libreadline, "rl_completion_type")
 rl_completer_word_break_characters = c_char_p.in_dll(libreadline,
-    "rl_completer_word_break_characters") # constant
+    "rl_completer_word_break_characters")
+rl_line_buffer = c_char_p.in_dll(libreadline, "rl_line_buffer")
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -443,4 +444,24 @@ def get_history_item(idx=0):
     hist_ent = history_get(idx)
     if hist_ent:
         return hist_ent.line
+
+
+# Exported function to get current length of history
+
+def get_current_history_length():
+    """
+    get_current_history_length() -> integer
+    return the current (not the maximum) length of history.
+    """
+    return _py_get_history_length()
+
+
+# Exported function to read the current line buffer
+
+def get_line_buffer():
+    """
+    get_line_buffer() -> string
+    return the current contents of the line buffer.
+    """
+    return rl_line_buffer
 
