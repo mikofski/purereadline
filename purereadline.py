@@ -6,6 +6,13 @@
 # This is a pure Python wrapper around GNU libreadine using `ctypes`, adapted
 # from python-readline.
 
+# References:
+# ===========
+# http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html
+# http://cnswww.cns.cwru.edu/php/chet/readline/readline.html
+# http://cnswww.cns.cwru.edu/php/chet/readline/history.html
+# http://pypi.python.org/pypi/readline
+
 from ctypes import *
 
 # libreadline.so and libhistory.so must be on LD_LIBRARY_PATH
@@ -65,6 +72,9 @@ history_get_history_state.restype = POINTER(HISTORY_STATE)
 history_get = libhistory.history_get
 history_get.argtypes = [c_int]
 history_get.restype = POINTER(HIST_ENTRY)
+clear_history = libhistory.clear_history
+clear_history.argtypes = []
+clear_history.restype = None
 
 
 # GNU readline structures:
@@ -463,4 +473,14 @@ def get_line_buffer():
     return the current contents of the line buffer.
     """
     return rl_line_buffer
+
+
+# Exported function to clear the current history
+
+def py_clear_history():
+    """
+    clear_history() -> None
+    Clear the current readline history.
+    """
+    clear_history()
 
