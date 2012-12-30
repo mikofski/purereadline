@@ -116,7 +116,6 @@ def parse_and_bind(s):
     # Bernard Herzog
     s_copy = create_string_buffer(s) # raises TypeError exception
     rl_parse_and_bind(s_copy)
-    del(s_copy)
 
 
 # read_init_file(PyObject *self, PyObject *args)
