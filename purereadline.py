@@ -45,6 +45,9 @@ rl_parse_and_bind.restype = c_int
 rl_read_init_file = libreadline.rl_read_init_file
 rl_read_init_file.argtypes = [c_char_p] # constant
 rl_read_init_file.restype = c_int
+rl_insert_text = libreadline.rl_insert_text
+rl_insert_text.argtypes = [c_char_p]
+rl_insert_text.restype = c_int
 read_history = libhistory.read_history
 read_history.argtypes = [c_char_p] # constant
 read_history.restype = c_int
@@ -483,4 +486,19 @@ def py_clear_history():
     Clear the current readline history.
     """
     clear_history()
+
+
+# Exported function to insert text into the line buffer
+
+def insert_text(s):
+    """
+    insert_text(string) -> None
+    Insert text into the command line.
+    """
+    if type(s) not in [str, unicode]:
+        return
+    elif type(s) == unicode:
+        s = str(s)
+    rl_insert_text(s)
+
 
