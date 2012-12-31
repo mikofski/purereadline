@@ -516,3 +516,30 @@ def redisplay():
     rl_redisplay()
 
 
+# C function to call the Python hooks.
+
+def on_hook(func):
+    # return int
+    result = 0 # int
+    if func != None:
+        try:
+            r = func()
+        except exception as e:
+            error = True
+        if r == None:
+            result = 0
+        else:
+            result = r
+            if result == -1 and error:
+                pass
+    return result
+
+
+def on_startup_hook():
+    return on_hook(startup_hook)
+
+
+def on_pre_input_hook():
+    return on_hook(pre_input_hook)
+
+
