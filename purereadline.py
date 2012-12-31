@@ -3,7 +3,7 @@
 # Center.  The completer interface was inspired by Lele Gaifax.  More
 # recently, it was largely rewritten by Guido van Rossum.
 
-# This is a pure Python wrapper around GNU libreadine using `ctypes`, adapted
+# This is a pure Python wrapper around GNU libreadline using `ctypes`, adapted
 # from python-readline.
 
 # References:
@@ -48,6 +48,9 @@ rl_read_init_file.restype = c_int
 rl_insert_text = libreadline.rl_insert_text
 rl_insert_text.argtypes = [c_char_p]
 rl_insert_text.restype = c_int
+rl_redisplay = libreadline.rl_redisplay
+rl_redisplay.argtypes = []
+rl_redisplay.restype = None
 read_history = libhistory.read_history
 read_history.argtypes = [c_char_p] # constant
 read_history.restype = c_int
@@ -500,5 +503,16 @@ def insert_text(s):
     elif type(s) == unicode:
         s = str(s)
     rl_insert_text(s)
+
+
+# Redisplay the line buffer
+
+def redisplay():
+    """
+    redisplay() -> None
+    Change what's displayed on the screen to reflect the current
+    contents of the line buffer.
+    """
+    rl_redisplay()
 
 
