@@ -540,46 +540,9 @@ def on_pre_input_hook():
 # C function to call the Python completion_display_matches
 
 def on_completion_display_matches_hook(matches, num_matches, max_length):
-    m = [] # allocate a new list of length num_matches
     for i in range(num_matches - 1):
         s = str(matches[i + 1])
         m.append(s)
     r = completion_display_matches_hook(matches[0], m, max_length)
-{
-    int i;
-    PyObject *m=NULL, *s=NULL, *r=NULL;
-#ifdef WITH_THREAD
-    PyGILState_STATE gilstate = PyGILState_Ensure();
-#endif
-    m = PyList_New(num_matches);
-    if (m == NULL)
-        goto error;
-    for (i = 0; i < num_matches; i++) {
-        s = PyString_FromString(matches[i+1]);
-        if (s == NULL)
-            goto error;
-        if (PyList_SetItem(m, i, s) == -1)
-            goto error;
-    }
 
-    r = PyObject_CallFunction(completion_display_matches_hook,
-                              "sOi", matches[0], m, max_length);
 
-    Py_DECREF(m); m=NULL;
-
-    if (r == NULL ||
-        (r != Py_None && PyInt_AsLong(r) == -1 && PyErr_Occurred())) {
-        goto error;
-    }
-    Py_XDECREF(r); r=NULL;
-
-    if (0) {
-    error:
-        PyErr_Clear();
-        Py_XDECREF(m);
-        Py_XDECREF(r);
-    }
-#ifdef WITH_THREAD
-    PyGILState_Release(gilstate);
-#endif
-}
