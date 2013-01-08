@@ -519,19 +519,13 @@ def redisplay():
 # C function to call the Python hooks.
 
 def on_hook(func):
-    # return int
-    result = 0 # int
+    # python-readline uses PyObject_CallFunction, which returns NULL on failure
+    # 
+    result = int(0)
     if func != None:
-        try:
-            r = func()
-        except exception as e:
-            error = True
-        if r == None:
-            result = 0
-        else:
-            result = r
-            if result == -1 and error:
-                pass
+        r = func()
+        if r != None:
+            result = int(r)
     return result
 
 
@@ -546,14 +540,10 @@ def on_pre_input_hook():
 # C function to call the Python completion_display_matches
 
 def on_completion_display_matches_hook(matches, num_matches, max_length):
-    m = []
-    if m == None:
-        return
-    for i in range(num_matches):
-        s = matches[i + 1]
-        if s == None:
-            return
-        m[i] = s
+    m = [] # allocate a new list of length num_matches
+    for i in range(num_matches - 1):
+        s = str(matches[i + 1])
+        m.append(s)
     r = completion_display_matches_hook(matches[0], m, max_length)
 {
     int i;
