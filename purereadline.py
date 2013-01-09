@@ -19,6 +19,10 @@ from ctypes import *
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
 
+# Special types
+histdata_t = c_void_p
+Keymap = c_void_p
+
 # GNU readline defines new object types that are function pointers. We need to
 # redefine them in Python.
 RL_COMPDISP_FUNC_T = CFUNCTYPE(None, POINTER(c_char_p), c_int, c_int)
@@ -43,6 +47,7 @@ rl_completion_suppress_append = c_int.in_dll(libreadline,
     "rl_completion_suppress_append")
 rl_readline_name = c_char_p.in_dll(libreadline, "rl_readline_name")
 rl_terminal_name = c_char_p.in_dll(libreadline, "rl_terminal_name")
+emacs_meta_keymap = Keymap.in_dll(libreadline, "emacs_meta_keymap")
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -64,8 +69,11 @@ rl_bind_key = libreadline.rl_bind_key
 rl_bind_key.argtypes = [c_int, POINTER(RL_COMMAND_FUNC_T)]
 rl_bind_key.restype = c_int
 rl_bind_key_in_map = libreadline.rl_bind_key_in_map
-rl_bind_key_in_map.argtypes = [c_int, POINTER(RL_COMMAND_FUNC_T)]
+rl_bind_key_in_map.argtypes = [c_int, POINTER(RL_COMMAND_FUNC_T), Keymap]
 rl_bind_key_in_map.restype = c_int
+rl_insert = libreadline.rl_insert
+rl_insert.argtypes = []
+rl_insert.restype = c_int
 read_history = libhistory.read_history
 read_history.argtypes = [c_char_p] # constant
 read_history.restype = c_int
@@ -100,10 +108,8 @@ using_history = libhistory.using_history
 using_history.argtypes = []
 using_history.restype = None
 
+
 # GNU readline structures:
-histdata_t = c_void_p
-
-
 class HIST_ENTRY(Structure):
     _fields_ = [("line", c_char_p),
                 ("timestamp", c_char_p),
@@ -580,7 +586,7 @@ def on_completion(text, state):
 # before calling the normal completer
 
 def flex_complete(text, start, end):
-    rl_completion_append_character = None
+    rl_completion_append_character = ord('\000') # NULL terminates string buffer
     rl_completion_suppress_append = 0
     begidx = start
     endidx = end
@@ -592,8 +598,13 @@ def flex_complete(text, start, end):
 def setup_readline():
     using_history()
     rl_readline_name = "python"
-    # Android doesn't define TERM
+    # Android, SL4A and PY4A don't define TERM
     #rl_terminal_name = os.getenv('TERM')
+    # Force rebind of TAB to insert-tab
+    rl_bind_key(ord('\t'), rl_insert)
+    # Bind both ESC-TAB and ESC-ESC to the completion function
+    rl_bind_key_in_map (ord('\t'), rl_complete, emacs_meta_keymap);
+    rl_bind_key_in_map (ord('\033'), rl_complete, emacs_meta_keymap);
 
 {
 
@@ -635,5 +646,5 @@ def setup_readline():
     
     RESTORE_LOCALE(saved_locale)
 }
-    # Androidn
-    #rl_terminal_name = os.getenv('TERM')
+
+
