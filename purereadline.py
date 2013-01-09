@@ -36,6 +36,10 @@ rl_completer_word_break_characters = c_char_p.in_dll(libreadline,
 rl_line_buffer = c_char_p.in_dll(libreadline, "rl_line_buffer")
 rl_attempted_completion_over = c_int.in_dll(libreadline,
     "rl_attempted_completion_over")
+rl_completion_append_character = c_int.in_dll(libreadline,
+    "rl_completion_append_character")
+rl_completion_suppress_append = c_int.in_dll(libreadline,
+    "rl_completion_suppress_append")
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -553,10 +557,22 @@ def on_completion_display_matches_hook(matches, num_matches, max_length):
 def on_completion(text, state):
     result = None
     if completer != None:
-        rl_attempted_completion_over = 1;
+        rl_attempted_completion_over = 1
         r = completer(text, state)
         if r != None:
             s = str(r)
             result = create_string_buffer(s)
     return result
+
+
+# A more flexible constructor that saves the "begidx" and "endidx"
+# before calling the normal completer
+
+def flex_complete(text, start, end):
+    rl_completion_append_character = None
+    rl_completion_suppress_append = 0
+    begidx = start
+    endidx = end
+    return completion_matches(text, on_completion);
+
 
