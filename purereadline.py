@@ -24,6 +24,7 @@ libhistory = cdll.LoadLibrary('libhistory.so')
 RL_COMPDISP_FUNC_T = CFUNCTYPE(None, POINTER(c_char_p), c_int, c_int)
 RL_COMPENTRY_FUNC_T = CFUNCTYPE(c_char_p, c_char_p, c_int)
 RL_HOOK_FUNC_T = CFUNCTYPE(c_int)
+RL_COMMAND_FUNC_T = CFUNCTYPE(c_int, c_int, c_int)
 
 # GNU readline variables:
 rl_completion_display_matches_hook = POINTER(RL_COMPDISP_FUNC_T).in_dll(
@@ -40,6 +41,8 @@ rl_completion_append_character = c_int.in_dll(libreadline,
     "rl_completion_append_character")
 rl_completion_suppress_append = c_int.in_dll(libreadline,
     "rl_completion_suppress_append")
+rl_readline_name = c_char_p.in_dll(libreadline, "rl_readline_name")
+rl_terminal_name = c_char_p.in_dll(libreadline, "rl_terminal_name")
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -57,6 +60,12 @@ rl_insert_text.restype = c_int
 rl_redisplay = libreadline.rl_redisplay
 rl_redisplay.argtypes = []
 rl_redisplay.restype = None
+rl_bind_key = libreadline.rl_bind_key
+rl_bind_key.argtypes = [c_int, POINTER(RL_COMMAND_FUNC_T)]
+rl_bind_key.restype = c_int
+rl_bind_key_in_map = libreadline.rl_bind_key_in_map
+rl_bind_key_in_map.argtypes = [c_int, POINTER(RL_COMMAND_FUNC_T)]
+rl_bind_key_in_map.restype = c_int
 read_history = libhistory.read_history
 read_history.argtypes = [c_char_p] # constant
 read_history.restype = c_int
@@ -87,7 +96,9 @@ history_get.restype = POINTER(HIST_ENTRY)
 clear_history = libhistory.clear_history
 clear_history.argtypes = []
 clear_history.restype = None
-
+using_history = libhistory.using_history
+using_history.argtypes = []
+using_history.restype = None
 
 # GNU readline structures:
 histdata_t = c_void_p
@@ -257,7 +268,7 @@ def set_completion_display_matches_hook(function=None):
     function(substitution, [matches], longest_match_length)
     once each time matches need to be displayed.
     """
-    # TODO: use CFUNTYPE to define function types instead of using generic
+    # TODO: use CFUNCTYPE to define function types instead of using generic
     # "Python object" type.
     result = set_hook(function,
         pointer(py_object(completion_display_matches_hook)))
@@ -278,7 +289,7 @@ def set_startup_hook(function=None):
     The function is called with no arguments just
     before readline prints the first prompt.
     """
-    # TODO: use CFUNTYPE to define function types instead of using generic
+    # TODO: use CFUNCTYPE to define function types instead of using generic
     # "Python object" type.
     return set_hook(function, pointer(py_object(startup_hook)))
 
@@ -291,7 +302,7 @@ def set_pre_input_hook(function=None):
     has been printed and just before readline starts reading input
     characters.
     """
-    # TODO: use CFUNTYPE to define function types instead of using generic
+    # TODO: use CFUNCTYPE to define function types instead of using generic
     # "Python object" type.
     return set_hook(function, pointer(py_object(pre_input_hook)))
 
@@ -576,3 +587,53 @@ def flex_complete(text, start, end):
     return completion_matches(text, on_completion);
 
 
+# Helper to initialize GNU readline properly.
+
+def setup_readline():
+    using_history()
+    rl_readline_name = "python"
+    # Android doesn't define TERM
+    #rl_terminal_name = os.getenv('TERM')
+
+{
+
+    rl_readline_name = "python";
+#if defined(PYOS_OS2) && defined(PYCC_GCC)
+    /* Allow $if term= in .inputrc to work */
+    rl_terminal_name = getenv("TERM");
+#endif
+    /* Force rebind of TAB to insert-tab */
+    rl_bind_key('\t', rl_insert);
+    /* Bind both ESC-TAB and ESC-ESC to the completion function */
+    rl_bind_key_in_map ('\t', rl_complete, emacs_meta_keymap);
+    rl_bind_key_in_map ('\033', rl_complete, emacs_meta_keymap);
+    /* Set our hook functions */
+    rl_startup_hook = (Function *)on_startup_hook;
+#ifdef HAVE_RL_PRE_INPUT_HOOK
+    rl_pre_input_hook = (Function *)on_pre_input_hook;
+#endif
+    /* Set our completion function */
+    rl_attempted_completion_function = (CPPFunction *)flex_complete;
+    /* Set Python word break characters */
+    rl_completer_word_break_characters =
+        strdup(" \t\n`~!@#$%^&*()-=+[{]}\\|;:'\",<>/?");
+        /* All nonalphanums except '.' */
+
+    begidx = PyInt_FromLong(0L);
+    endidx = PyInt_FromLong(0L);
+    /* Initialize (allows .inputrc to override)
+     *
+     * XXX: A bug in the readline-2.2 library causes a memory leak
+     * inside this function.  Nothing we can do about it.
+     */
+#ifdef __APPLE__
+    if (using_libedit_emulation)
+    rl_read_init_file(NULL);
+    else
+#endif /* __APPLE__ */
+        rl_initialize();
+    
+    RESTORE_LOCALE(saved_locale)
+}
+    # Androidn
+    #rl_terminal_name = os.getenv('TERM')
