@@ -34,6 +34,8 @@ rl_completion_type = c_int.in_dll(libreadline, "rl_completion_type")
 rl_completer_word_break_characters = c_char_p.in_dll(libreadline,
     "rl_completer_word_break_characters")
 rl_line_buffer = c_char_p.in_dll(libreadline, "rl_line_buffer")
+rl_attempted_completion_over = c_int.in_dll(libreadline,
+    "rl_attempted_completion_over")
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -545,4 +547,16 @@ def on_completion_display_matches_hook(matches, num_matches, max_length):
         m.append(s)
     r = completion_display_matches_hook(matches[0], m, max_length)
 
+
+# C function to call the Python completer.
+
+def on_completion(text, state):
+    result = None
+    if completer != None:
+        rl_attempted_completion_over = 1;
+        r = completer(text, state)
+        if r != None:
+            s = str(r)
+            result = create_string_buffer(s)
+    return result
 
