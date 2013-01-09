@@ -520,7 +520,6 @@ def redisplay():
 
 def on_hook(func):
     # python-readline uses PyObject_CallFunction, which returns NULL on failure
-    # 
     result = int(0)
     if func != None:
         r = func()
@@ -540,6 +539,7 @@ def on_pre_input_hook():
 # C function to call the Python completion_display_matches
 
 def on_completion_display_matches_hook(matches, num_matches, max_length):
+    m = []
     for i in range(num_matches - 1):
         s = str(matches[i + 1])
         m.append(s)
