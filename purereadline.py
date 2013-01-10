@@ -8,10 +8,12 @@
 
 # References:
 # ===========
+# http://git.savannah.gnu.org/cgit/readline.git
 # http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html
 # http://cnswww.cns.cwru.edu/php/chet/readline/readline.html
 # http://cnswww.cns.cwru.edu/php/chet/readline/history.html
 # http://pypi.python.org/pypi/readline
+# http://docs.python.org/2/library/ctypes.html
 
 from ctypes import *
 
@@ -19,16 +21,46 @@ from ctypes import *
 libreadline = cdll.LoadLibrary('libreadline.so')
 libhistory = cdll.LoadLibrary('libhistory.so')
 
-# Special types
-histdata_t = c_void_p
-Keymap = c_void_p
-
 # GNU readline defines new object types that are function pointers. We need to
 # redefine them in Python.
 RL_COMPDISP_FUNC_T = CFUNCTYPE(None, POINTER(c_char_p), c_int, c_int)
 RL_COMPENTRY_FUNC_T = CFUNCTYPE(c_char_p, c_char_p, c_int)
 RL_HOOK_FUNC_T = CFUNCTYPE(c_int)
 RL_COMMAND_FUNC_T = CFUNCTYPE(c_int, c_int, c_int)
+
+# GNU readline structures and typedefs
+histdata_t = c_void_p
+
+
+class HIST_ENTRY(Structure):
+    _fields_ = [("line", c_char_p),
+                ("timestamp", c_char_p),
+                ("data", histdata_t)]
+
+
+# A structure used to pass around the current state of the history.
+
+class HISTORY_STATE(Structure):
+    # Pointer to the entries themselves.
+    _fields_ = [("entries", POINTER(POINTER(HIST_ENTRY)),
+                ("offset", c_int), # The location pointer within this array.
+                ("length", c_int), # Number of elements within this array.
+                ("size", c_int),  # Number of slots allocated to this array.
+                ("flags", c_int)]
+
+
+# GNU keymaps.h
+# -------------
+# A keymap contains one entry for each key in the ASCII set.
+# Each entry consists of a type and a pointer.
+# FUNCTION is the address of a function to run, or the
+# address of a keymap to indirect through.
+# TYPE says which kind of thing FUNCTION is.
+class KEYMAP_ENTRY(Structure):
+    _fields_ = [("type", c_char),
+                ("function", POINTER(RL_COMMAND_FUNC_T))]
+
+Keymap = POINTER(KEYMAP_ENTRY)
 
 # GNU readline variables:
 rl_completion_display_matches_hook = POINTER(RL_COMPDISP_FUNC_T).in_dll(
@@ -47,7 +79,7 @@ rl_completion_suppress_append = c_int.in_dll(libreadline,
     "rl_completion_suppress_append")
 rl_readline_name = c_char_p.in_dll(libreadline, "rl_readline_name")
 rl_terminal_name = c_char_p.in_dll(libreadline, "rl_terminal_name")
-emacs_meta_keymap = Keymap.in_dll(libreadline, "emacs_meta_keymap")
+emacs_meta_keymap = KEYMAP_ENTRY.in_dll(libreadline, "emacs_meta_keymap")
 
 # GNU readline functions: specify required argument and return types
 rl_completion_matches = libreadline.rl_completion_matches
@@ -72,8 +104,17 @@ rl_bind_key_in_map = libreadline.rl_bind_key_in_map
 rl_bind_key_in_map.argtypes = [c_int, POINTER(RL_COMMAND_FUNC_T), Keymap]
 rl_bind_key_in_map.restype = c_int
 rl_insert = libreadline.rl_insert
-rl_insert.argtypes = []
+rl_insert.argtypes = [c_int, c_int]
 rl_insert.restype = c_int
+rl_complete = libreadline.rl_complete
+rl_complete.argtypes = [c_int, c_int]
+rl_complete.restype = c_int
+rl_get_keymap_by_name = libreadline.rl_get_keymap_by_name
+rl_get_keymap_by_name.argtypes = [c_char_p]
+rl_get_keymap_by_name.restype = Keymap
+rl_initialize = libreadline.rl_initialize
+rl_initialize.argtypes = []
+rl_initialize.restype = None
 read_history = libhistory.read_history
 read_history.argtypes = [c_char_p] # constant
 read_history.restype = c_int
@@ -108,23 +149,25 @@ using_history = libhistory.using_history
 using_history.argtypes = []
 using_history.restype = None
 
+# keymap_names in bind.c
+# -------------
+# "emacs", emacs_standard_keymap
+# "emacs-standard", emacs_standard_keymap
+# "emacs-meta", emacs_meta_keymap
+# "emacs-ctlx", emacs_ctlx_keymap
+# "vi", vi_movement_keymap
+# "vi-move", vi_movement_keymap
+# "vi-command", vi_movement_keymap
+# "vi-insert", vi_insertion_keymap
+#
+# GNU Readline Documentation, 1.3.1 Readline Init File Syntax, Variables, keymap
+# ------------------------------------------------------------------------------
+# Acceptable keymap names are emacs, emacs-standard, emacs-meta, emacs-ctlx,
+# vi, vi-move, vi-command, and vi-insert. vi is equivalent to vi-command; emacs
+# is equivalent to emacs-standard. The default value is emacs.
 
-# GNU readline structures:
-class HIST_ENTRY(Structure):
-    _fields_ = [("line", c_char_p),
-                ("timestamp", c_char_p),
-                ("data", histdata_t)]
-
-
-# A structure used to pass around the current state of the history.
-
-class HISTORY_STATE(Structure):
-    # Pointer to the entries themselves.
-    _fields_ = [("entries", POINTER(POINTER(HIST_ENTRY)),
-                ("offset", c_int), # The location pointer within this array.
-                ("length", c_int), # Number of elements within this array.
-                ("size", c_int),  # Number of slots allocated to this array.
-                ("flags", c_int)]
+# an alternate method to get emacs_meta_keymap:
+#emacs_meta_keymap = rl_get_keymap_by_name("emacs-meta")
 
 
 def completion_matches(text, entry_func):
@@ -279,7 +322,7 @@ def set_completion_display_matches_hook(function=None):
     result = set_hook(function,
         pointer(py_object(completion_display_matches_hook)))
     # We cannot set this hook globally, since it replaces the
-    #  default completion display.
+    # default completion display.
     if completion_display_matches_hook:
         (rl_completion_display_matches_hook
             = POINTER(RL_COMPDISP_FUNC_T(on_completion_display_matches_hook)))
@@ -467,7 +510,7 @@ def _py_get_history_length():
     # line stays the same as long as history isn't extended, so it appears to
     # be malloc'd but managed by the history package... */
     # Not going to free hist_st, should be garbage collected by Python
-    return length;
+    return length
 
 
 # Exported function to get any element of history
@@ -590,7 +633,7 @@ def flex_complete(text, start, end):
     rl_completion_suppress_append = 0
     begidx = start
     endidx = end
-    return completion_matches(text, on_completion);
+    return completion_matches(text, on_completion)
 
 
 # Helper to initialize GNU readline properly.
@@ -603,48 +646,24 @@ def setup_readline():
     # Force rebind of TAB to insert-tab
     rl_bind_key(ord('\t'), rl_insert)
     # Bind both ESC-TAB and ESC-ESC to the completion function
-    rl_bind_key_in_map (ord('\t'), rl_complete, emacs_meta_keymap);
-    rl_bind_key_in_map (ord('\033'), rl_complete, emacs_meta_keymap);
-
-{
-
-    rl_readline_name = "python";
-#if defined(PYOS_OS2) && defined(PYCC_GCC)
-    /* Allow $if term= in .inputrc to work */
-    rl_terminal_name = getenv("TERM");
-#endif
-    /* Force rebind of TAB to insert-tab */
-    rl_bind_key('\t', rl_insert);
-    /* Bind both ESC-TAB and ESC-ESC to the completion function */
-    rl_bind_key_in_map ('\t', rl_complete, emacs_meta_keymap);
-    rl_bind_key_in_map ('\033', rl_complete, emacs_meta_keymap);
-    /* Set our hook functions */
-    rl_startup_hook = (Function *)on_startup_hook;
-#ifdef HAVE_RL_PRE_INPUT_HOOK
-    rl_pre_input_hook = (Function *)on_pre_input_hook;
-#endif
-    /* Set our completion function */
-    rl_attempted_completion_function = (CPPFunction *)flex_complete;
-    /* Set Python word break characters */
+    rl_bind_key_in_map (ord('\t'), rl_complete, emacs_meta_keymap)
+    rl_bind_key_in_map (ord('\033'), rl_complete, emacs_meta_keymap)
+    # Set our hook functions
+    rl_startup_hook = on_startup_hook
+    rl_pre_input_hook = on_pre_input_hook
+    # Set our completion function
+    rl_attempted_completion_function = flex_complete
+    # Set Python word break characters
     rl_completer_word_break_characters =
-        strdup(" \t\n`~!@#$%^&*()-=+[{]}\\|;:'\",<>/?");
-        /* All nonalphanums except '.' */
+        create_string_buffer(" \t\n`~!@#$%^&*()-=+[{]}\\|;:'\",<>/?")
+        # All nonalphanums except '.'
 
-    begidx = PyInt_FromLong(0L);
-    endidx = PyInt_FromLong(0L);
-    /* Initialize (allows .inputrc to override)
-     *
-     * XXX: A bug in the readline-2.2 library causes a memory leak
-     * inside this function.  Nothing we can do about it.
-     */
-#ifdef __APPLE__
-    if (using_libedit_emulation)
-    rl_read_init_file(NULL);
-    else
-#endif /* __APPLE__ */
-        rl_initialize();
-    
-    RESTORE_LOCALE(saved_locale)
-}
+    begidx = 0L
+    endidx = 0L
+    # Initialize (allows .inputrc to override)
+    #
+    # XXX: A bug in the readline-2.2 library causes a memory leak
+    # inside this function.  Nothing we can do about it.
+    rl_initialize()
 
 
