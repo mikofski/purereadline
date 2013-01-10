@@ -115,6 +115,9 @@ rl_get_keymap_by_name.restype = Keymap
 rl_initialize = libreadline.rl_initialize
 rl_initialize.argtypes = []
 rl_initialize.restype = None
+rl_callback_handler_remove = libreadline.rl_callback_handler_remove
+rl_callback_handler_remove.argtypes = []
+rl_callback_handler_remove.restype = None
 read_history = libhistory.read_history
 read_history.argtypes = [c_char_p] # constant
 read_history.restype = c_int
@@ -658,5 +661,14 @@ def setup_readline():
     # XXX: A bug in the readline-2.2 library causes a memory leak
     # inside this function.  Nothing we can do about it.
     rl_initialize()
+
+
+# Wrapper around GNU readline that handles signals differently.
+
+completed_input_string = py_object(None)
+
+def rlhandler(text):
+    completed_input_string.value = text
+    rl_callback_handler_remove()
 
 
