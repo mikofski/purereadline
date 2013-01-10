@@ -241,7 +241,7 @@ def read_history_file(s=None):
         raise IOError(2,'No such file or directory',s)
 
 
-_history_length = -1 # do not truncate history by default
+_history_length = py_object(-1) # do not truncate history by default
 
 # Exported function to save a readline history file
 
@@ -256,22 +256,22 @@ def write_history_file(s=None):
     elif type(s) == unicode:
         s = str(s)
     errno = write_history(s)
-    if not errno and _history_length >= 0:
-        history_truncate_file(s, _history_length)
+    if not errno and _history_length.value >= 0:
+        history_truncate_file(s, _history_length.value)
     if (errno)
         raise IOError(2,'No such file or directory',s)
 
 
 # Set history length
 
-def set_history_length(length=_history_length):
+def set_history_length(length=_history_length.value):
     """
     set_history_length(length) -> None
     set the maximal number of items which will be written to
     the history file. A negative length is used to inhibit
     history truncation.
     """
-    _history_length = length
+    _history_length.value = length
 
 
 # Get history length
@@ -282,7 +282,7 @@ def get_history_length():
     return the maximum number of items that will be written to
     the history file.
     """
-    return _history_length
+    return _history_length.value
 
 
 # set_hook(const char *funcname, PyObject **hook_var, PyObject *args)
@@ -296,18 +296,18 @@ def set_hook(function=None, hook_var):
     # if function is `None`, set hook_var to `None`, otherwise set hook_var to
     # function or raise exception if function is not callable.
     if function == None:
-        hook_var.contents.value = None
+        hook_var.value = None
     elif hasattr(function, '__call__'):
-        hook_var.contents.value = function
+        hook_var.value = function
     else:
         raise TypeError('object is not callable')
 
 
 # Exported functions to specify hook functions in Python
 
-completion_display_matches_hook = None
-startup_hook = None
-pre_input_hook = None
+completion_display_matches_hook = py_object(None)
+startup_hook = py_object(None)
+pre_input_hook = py_object(None)
 
 def set_completion_display_matches_hook(function=None):
     """
@@ -317,13 +317,10 @@ def set_completion_display_matches_hook(function=None):
     function(substitution, [matches], longest_match_length)
     once each time matches need to be displayed.
     """
-    # TODO: use CFUNCTYPE to define function types instead of using generic
-    # "Python object" type.
-    result = set_hook(function,
-        pointer(py_object(completion_display_matches_hook)))
+    result = set_hook(function, completion_display_matches_hook)
     # We cannot set this hook globally, since it replaces the
     # default completion display.
-    if completion_display_matches_hook:
+    if completion_display_matches_hook.value:
         (rl_completion_display_matches_hook
             = POINTER(RL_COMPDISP_FUNC_T(on_completion_display_matches_hook)))
     elif
@@ -338,9 +335,7 @@ def set_startup_hook(function=None):
     The function is called with no arguments just
     before readline prints the first prompt.
     """
-    # TODO: use CFUNCTYPE to define function types instead of using generic
-    # "Python object" type.
-    return set_hook(function, pointer(py_object(startup_hook)))
+    return set_hook(function, startup_hook)
 
 
 def set_pre_input_hook(function=None):
@@ -351,16 +346,14 @@ def set_pre_input_hook(function=None):
     has been printed and just before readline starts reading input
     characters.
     """
-    # TODO: use CFUNCTYPE to define function types instead of using generic
-    # "Python object" type.
-    return set_hook(function, pointer(py_object(pre_input_hook)))
+    return set_hook(function, pre_input_hook)
 
 
 # Exported function to specify a word completer in Python
 
-completer = None
-begidx = None
-endidx = None
+completer = py_object(None)
+begidx = py_object(None)
+endidx = py_object(None)
 
 
 # Get the completion type for the scope of the tab-completion
@@ -379,7 +372,7 @@ def get_begidx():
     get_begidx() -> int
     get the beginning index of the readline tab-completion scope
     """
-    return begidx
+    return begidx.value
 
 
 # Get the ending index for the scope of the tab-completion
@@ -389,7 +382,7 @@ def get_endidx():
     get_endidx() -> int
     get the ending index of the readline tab-completion scope
     """
-    return endidx
+    return endidx.value
 
 
 # Set the tab-completion word-delimiters that readline uses
@@ -486,7 +479,7 @@ def set_completer(function=None):
     for state in 0, 1, 2, ..., until it returns a non-string.
     It should return the next possible completion starting with 'text'.
     """
-    return set_hook(function, pointer(py_object(completer)))
+    return set_hook(function, completer)
 
 
 def get_completer():
@@ -494,7 +487,7 @@ def get_completer():
     get_completer() -> function
     Returns current completer function.
     """
-    return completer
+    return completer.value
 
 # Private function to get current length of history.  XXX It may be
 # possible to replace this with a direct use of history_length instead,
@@ -595,11 +588,11 @@ def on_hook(func):
 
 
 def on_startup_hook():
-    return on_hook(startup_hook)
+    return on_hook(startup_hook.value)
 
 
 def on_pre_input_hook():
-    return on_hook(pre_input_hook)
+    return on_hook(pre_input_hook.value)
 
 
 # C function to call the Python completion_display_matches
@@ -609,16 +602,16 @@ def on_completion_display_matches_hook(matches, num_matches, max_length):
     for i in range(num_matches - 1):
         s = str(matches[i + 1])
         m.append(s)
-    r = completion_display_matches_hook(matches[0], m, max_length)
+    r = completion_display_matches_hook.value(matches[0], m, max_length)
 
 
 # C function to call the Python completer.
 
 def on_completion(text, state):
     result = None
-    if completer != None:
+    if completer.value != None:
         rl_attempted_completion_over = 1
-        r = completer(text, state)
+        r = completer.value(text, state)
         if r != None:
             s = str(r)
             result = create_string_buffer(s)
@@ -631,8 +624,8 @@ def on_completion(text, state):
 def flex_complete(text, start, end):
     rl_completion_append_character = ord('\000') # NULL terminates string buffer
     rl_completion_suppress_append = 0
-    begidx = start
-    endidx = end
+    begidx.value = start
+    endidx.value = end
     return completion_matches(text, on_completion)
 
 
@@ -658,8 +651,8 @@ def setup_readline():
         create_string_buffer(" \t\n`~!@#$%^&*()-=+[{]}\\|;:'\",<>/?")
         # All nonalphanums except '.'
 
-    begidx = 0L
-    endidx = 0L
+    begidx.value = 0 # python-readline uses PyInt_FromLong(0L)
+    endidx.value = 0
     # Initialize (allows .inputrc to override)
     #
     # XXX: A bug in the readline-2.2 library causes a memory leak
