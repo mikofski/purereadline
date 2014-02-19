@@ -326,7 +326,7 @@ def set_completion_display_matches_hook(function=None):
     if completion_display_matches_hook.value:
         (rl_completion_display_matches_hook
             = POINTER(RL_COMPDISP_FUNC_T(on_completion_display_matches_hook)))
-    elif
+    else:
         rl_completion_display_matches_hook = 0
     return result
 
