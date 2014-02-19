@@ -261,7 +261,7 @@ def write_history_file(s=None):
     errno = write_history(s)
     if not errno and _history_length.value >= 0:
         history_truncate_file(s, _history_length.value)
-    if (errno)
+    if errno:
         raise IOError(2,'No such file or directory',s)
 
 
